@@ -1,58 +1,55 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+/* Merged Theme Configuration */
 @theme {
   /* Design Standards Compliance */
-
-  /* Fonts */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 
   /* Colors - Dark Mode per Standards */
-  /* Background: #101622 (Brand Dark Blue) */
   --color-background: #101622;
   --color-foreground: #FFFFFF;
-
-  /* Cards: #1E293B (Slate 800) */
   --color-card: #1E293B;
   --color-card-foreground: #FFFFFF;
-
-  /* Popovers */
   --color-popover: #101622;
   --color-popover-foreground: #FFFFFF;
-
-  /* Primary: #F97316 (Orange 500) */
   --color-primary: #F97316;
   --color-primary-foreground: #FFFFFF;
-
-  /* Secondary: #1E293B (Slate 800) */
   --color-secondary: #1E293B;
   --color-secondary-foreground: #FFFFFF;
-
-  /* Muted: #334155 (Slate 700) */
   --color-muted: #334155;
   --color-muted-foreground: #94A3B8;
-  /* Slate 400 */
-
-  /* Accent: #FCD34D (Amber 300) or lighter Orange */
   --color-accent: #EA580C;
-  /* Orange 600 */
   --color-accent-foreground: #FFFFFF;
-
-  /* Destructive */
   --color-destructive: #EF4444;
   --color-destructive-foreground: #FFFFFF;
-
-  /* Borders: #334155 (Slate 700) */
   --color-border: #334155;
   --color-input: #334155;
   --color-ring: #F97316;
 
   --radius: 0.5rem;
-  /* 8px Standard */
+  
+  /* Admin Panel Specific Colors (shadcn default mapping) */
+  --color-sidebar: #101622;
+  --color-sidebar-foreground: #FFFFFF;
+  --color-sidebar-primary: #F97316;
+  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-accent: #1E293B;
+  --color-sidebar-accent-foreground: #FFFFFF;
+  --color-sidebar-border: #334155;
+  --color-sidebar-ring: #F97316;
+  
+  --color-chart-1: #3b82f6; 
+  --color-chart-2: #10b981;
+  --color-chart-3: #f59e0b;
+  --color-chart-4: #ef4444;
+  --color-chart-5: #8b5cf6;
 }
 
+/* Fallback Variables & Shadcn Compatibility */
 :root {
-  /* Fallback CSS Variables if needed by components */
   --background: #101622;
   --foreground: #FFFFFF;
   --card: #1E293B;
@@ -73,23 +70,30 @@
   --input: #334155;
   --ring: #F97316;
   --radius: 0.5rem;
+
+  /* Sidebar Variables for Admin */
+  --sidebar: #101622;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #F97316;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1E293B;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #334155;
+  --sidebar-ring: #F97316;
 }
 
 @layer base {
+  * {
+    @apply border-border;
+  }
   body {
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
     @apply antialiased;
   }
-
-  /* Apply Heading Font to Headings */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  
+  h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
   }
 }
@@ -98,19 +102,15 @@
   .news-card {
     @apply transition-colors duration-200 bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50;
   }
-
   .news-title {
     @apply font-heading font-bold tracking-tight text-white transition-colors group-hover:text-primary;
   }
-
   .live-pulse {
     @apply relative flex h-3 w-3;
   }
-
   .live-pulse span:first-child {
     @apply animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75;
   }
-
   .live-pulse span:last-child {
     @apply relative inline-flex rounded-full h-3 w-3 bg-red-500;
   }

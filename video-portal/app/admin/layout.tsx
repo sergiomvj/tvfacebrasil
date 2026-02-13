@@ -1,6 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,21 +16,16 @@ export const metadata = {
   description: "Dashboard de Gerenciamento de Produção de Vídeos",
 };
 
-export default function RootLayout({
+export default function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
     <ClerkProvider>
-      <html lang="pt-BR" className="dark" suppressHydrationWarning>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
-          suppressHydrationWarning
-        >
-          {children}
-        </body>
-      </html>
+      <div className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#101622] text-[#FFFFFF] min-h-screen`}>
+        {children}
+      </div>
     </ClerkProvider>
   );
 }

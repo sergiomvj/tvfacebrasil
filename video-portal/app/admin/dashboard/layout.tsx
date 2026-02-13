@@ -9,7 +9,7 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="flex h-screen bg-background">
+        <div className="flex h-screen bg-[#101622]">
             {/* Sidebar */}
             <aside className="w-64 border-r bg-card hidden md:flex flex-col">
                 <div className="p-6 h-16 flex items-center border-b">
@@ -61,7 +61,7 @@ function NavItem({ href, icon, label }: { href: string; icon: React.ReactNode; l
     return (
         <Link
             href={href}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-[#FFFFFF] transition-colors"
         >
             {icon}
             <span>{label}</span>
