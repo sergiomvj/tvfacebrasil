@@ -1,83 +1,46 @@
+// ============================================
+// COMPONENTE: KANBAN BOARD
+// Pipeline de Produção de Vídeos
+// ============================================
+
 'use client';
 
 import React from 'react';
 import { 
   Loader2, 
   AlertCircle, 
+  CheckCircle, 
   Clock, 
   Play, 
-  CheckCircle, 
   Edit3, 
-  Video,
-  RefreshCw,
-  MoreHorizontal
+  Film,
+  RotateCcw,
+  MoreHorizontal,
+  ArrowRight,
+  Star
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Video, VideoStatus } from '../services/control-tower-service';
+import { Video, VideoStatus } from '@/control-tower/services/control-tower-service';
+import Link from 'next/link';
 
 interface KanbanBoardProps {
-  columns: Record<VideoStatus, Video[]>;
+  videos: Video[];
   loading: boolean;
-  onCardClick: (video: Video) => void;
-  onMoveCard: (videoId: string, newStatus: VideoStatus) => void;
+  onMoveStatus: (videoId: string, newStatus: VideoStatus) => void;
   onRetry?: (videoId: string) => void;
 }
 
-interface KanbanColumn {
-  id: VideoStatus;
-  title: string;
-  icon: React.ReactNode;
-  color: string;
-  bgColor: string;
-}
-
-const COLUMNS: KanbanColumn[] = [
-  { 
-    id: 'intake', 
-    title: 'Novos', 
-    icon: <Clock className="w-4 h-4" />,
-    color: 'border-gray-300',
-    bgColor: 'bg-gray-50'
-  },
-  { 
-    id: 'scripting', 
-    title: 'Roteirização', 
-    icon: <Edit3 className="w-4 h-4" />,
-    color: 'border-blue-300',
-    bgColor: 'bg-blue-50'
-  },
-  { 
-    id: 'rendering', 
-    title: 'Produção', 
-    icon: <Play className="w-4 h-4" />,
-    color: 'border-purple-300',
-    bgColor: 'bg-purple-50'
-  },
-  { 
-    id: 'review', 
-    title: 'Revisão', 
-    icon: <Video className="w-4 h-4" />,
-    color: 'border-yellow-300',
-    bgColor: 'bg-yellow-50'
-  },
-  { 
-    id: 'published', 
-    title: 'Publicados', 
-    icon: <CheckCircle className="w-4 h-4" />,
-    color: 'border-green-300',
-    bgColor: 'bg-green-50'
-  },
-  { 
-    id: 'error', 
-    title: 'Erros', 
-    icon: <AlertCircle className="w-4 h-4" />,
-    color: 'border-red-300',
-    bgColor: 'bg-red-50'
-  },
+const COLUMNS: { id: VideoStatus; label: string; icon: React.ReactNode; color: string }[] = [
+  { id: 'intake', label: 'Intake', icon: <Clock className="w-4 h-4" />, color: 'bg-gray-100 border-gray-200' },
+  { id: 'scripting', label: 'Roteirização', icon: <Edit3 className="w-4 h-4" />, color: 'bg-blue-50 border-blue-200' },
+  { id: 'rendering', label: 'Produção', icon: <Film className="w-4 h-4" />, color: 'bg-purple-50 border-purple-200' },
+  { id: 'review', label: 'Revisão', icon: <Play className="w-4 h-4" />, color: 'bg-yellow-50 border-yellow-200' },
+  { id: 'published', label: 'Publicados', icon: <CheckCircle className="w-4 h-4" />, color: 'bg-green-50 border-green-200' },
+  { id: 'error', label: 'Erros', icon: <AlertCircle className="w-4 h-4" />, color: 'bg-red-50 border-red-200' },
 ];
 
 const StatusBadge = ({ status }: { status: VideoStatus }) => {
-  const variants: Record<VideoStatus, string> = {
+  const styles = {
     intake: 'bg-gray-100 text-gray-700',
     scripting: 'bg-blue-100 text-blue-700',
     rendering: 'bg-purple-100 text-purple-700',
@@ -87,116 +50,157 @@ const StatusBadge = ({ status }: { status: VideoStatus }) => {
     cancelled: 'bg-gray-100 text-gray-500',
   };
 
-  const labels: Record<VideoStatus, string> = {
-    intake: 'Novo',
-    scripting: 'Roteiro',
-    rendering: 'Produzindo',
-    review: 'Revisão',
-    published: 'Publicado',
-    error: 'Erro',
-    cancelled: 'Cancelado',
-  };
-
   return (
-    <span className={cn(
-      "px-2 py-0.5 rounded-full text-xs font-medium",
-      variants[status]
-    )}>
-      {labels[status]}
-    </span>
-  );
-};
-
-const AIScoreBadge = ({ score }: { score: number | null }) => {
-  if (score === null) return null;
-  
-  const color = score >= 80 ? 'bg-green-100 text-green-700' :
-                score >= 60 ? 'bg-yellow-100 text-yellow-700' :
-                'bg-red-100 text-red-700';
-  
-  return (
-    <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", color)}>
-      AI: {score}
+    <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", styles[status])}>
+      {status}
     </span>
   );
 };
 
 const VideoCard = ({ 
   video, 
-  onClick, 
+  onMoveStatus, 
   onRetry 
 }: { 
   video: Video; 
-  onClick: () => void;
-  onRetry?: () => void;
+  onMoveStatus: (videoId: string, newStatus: VideoStatus) => void;
+  onRetry?: (videoId: string) => void;
 }) => {
+  const isError = video.status === 'error';
+  const isPublished = video.status === 'published';
+  
+  const nextStatus: Record<VideoStatus, VideoStatus | null> = {
+    intake: 'scripting',
+    scripting: 'rendering',
+    rendering: 'review',
+    review: 'published',
+    published: null,
+    error: 'rendering',
+    cancelled: null,
+  };
+
+  const handleMove = () => {
+    const next = nextStatus[video.status];
+    if (next) {
+      onMoveStatus(video.id, next);
+    }
+  };
+
   return (
-    <div 
-      onClick={onClick}
-      className="bg-white rounded-lg border shadow-sm p-3 cursor-pointer hover:shadow-md transition-shadow group"
-    >
+    <div className={cn(
+      "bg-white rounded-lg border p-4 shadow-sm hover:shadow-md transition-shadow",
+      isError && "border-red-300 bg-red-50"
+    )}>
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h4 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1">
-          {video.article_title}
-        </h4>
-        {video.status === 'error' && onRetry && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRetry();
-            }}
-            className="p-1 hover:bg-red-100 rounded transition-colors"
-            title="Tentar novamente"
-          >
-            <RefreshCw className="w-4 h-4 text-red-600" />
-          </button>
-        )}
-      </div>
-
-      {/* Metadata */}
-      <div className="flex items-center gap-2 mb-2">
-        <AIScoreBadge score={video.ai_score} />
-        {video.retry_count > 0 && (
-          <span className="text-xs text-orange-600">
-            Retry: {video.retry_count}
-          </span>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>{video.category_name || 'Sem categoria'}</span>
-        <span>{new Date(video.created_at).toLocaleDateString('pt-BR')}</span>
-      </div>
-
-      {/* Progress indicator for rendering */}
-      {video.status === 'rendering' && (
-        <div className="mt-2 flex items-center gap-2">
-          <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-purple-500 animate-pulse w-3/4" />
-          </div>
-          <Loader2 className="w-3 h-3 animate-spin text-purple-500" />
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium text-sm text-gray-900 truncate" title={video.article_title}>
+            {video.article_title}
+          </h4>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {video.category_name || 'Sem categoria'}
+          </p>
         </div>
-      )}
+        {video.ai_score && (
+          <div className="flex items-center gap-1 text-xs text-amber-600 ml-2">
+            <Star className="w-3 h-3 fill-current" />
+            {video.ai_score}
+          </div>
+        )}
+      </div>
 
-      {/* Error message */}
-      {video.status === 'error' && video.error_message && (
-        <div className="mt-2 text-xs text-red-600 line-clamp-2">
+      {/* Error Message */}
+      {isError && video.error_message && (
+        <div className="mb-3 p-2 bg-red-100 rounded text-xs text-red-700">
           {video.error_message}
         </div>
       )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center gap-2">
+          <StatusBadge status={video.status} />
+          {video.retry_count > 0 && (
+            <span className="text-xs text-gray-500">
+              Retry: {video.retry_count}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          {/* Action Buttons */}
+          {video.status === 'scripting' && (
+            <Link
+              href={`/dashboard/editor/${video.id}`}
+              className="p-1.5 hover:bg-gray-100 rounded text-blue-600"
+              title="Editar Roteiro"
+            >
+              <Edit3 className="w-4 h-4" />
+            </Link>
+          )}
+
+          {video.status === 'review' && (
+            <Link
+              href={`/dashboard/review/${video.id}`}
+              className="p-1.5 hover:bg-gray-100 rounded text-green-600"
+              title="Revisar Vídeo"
+            >
+              <Play className="w-4 h-4" />
+            </Link>
+          )}
+
+          {isError && onRetry && (
+            <button
+              onClick={() => onRetry(video.id)}
+              className="p-1.5 hover:bg-red-100 rounded text-red-600"
+              title="Tentar Novamente"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Move Button */}
+          {nextStatus[video.status] && (
+            <button
+              onClick={handleMove}
+              className="p-1.5 hover:bg-gray-100 rounded text-gray-600"
+              title={`Mover para ${nextStatus[video.status]}`}
+            >
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Date */}
+      <div className="mt-2 text-xs text-gray-400">
+        {new Date(video.created_at).toLocaleDateString('pt-BR')}
+      </div>
     </div>
   );
 };
 
-export function KanbanBoard({ 
-  columns, 
-  loading, 
-  onCardClick, 
-  onMoveCard,
-  onRetry 
-}: KanbanBoardProps) {
+export function KanbanBoard({ videos, loading, onMoveStatus, onRetry }: KanbanBoardProps) {
+  const videosByColumn = React.useMemo(() => {
+    const grouped: Record<VideoStatus, Video[]> = {
+      intake: [],
+      scripting: [],
+      rendering: [],
+      review: [],
+      published: [],
+      error: [],
+      cancelled: [],
+    };
+    
+    videos.forEach(video => {
+      if (grouped[video.status]) {
+        grouped[video.status].push(video);
+      }
+    });
+    
+    return grouped;
+  }, [videos]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -207,71 +211,46 @@ export function KanbanBoard({
 
   return (
     <div className="flex gap-4 overflow-x-auto pb-4">
-      {COLUMNS.map(column => {
-        const videos = columns[column.id] || [];
-        
-        return (
-          <div 
-            key={column.id}
-            className={cn(
-              "flex-shrink-0 w-72 rounded-lg border-2",
-              column.bgColor,
-              column.color
-            )}
-          >
-            {/* Column Header */}
-            <div className={cn(
-              "p-3 border-b rounded-t-lg",
-              column.bgColor
-            )}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {column.icon}
-                  <h3 className="font-semibold text-sm">{column.title}</h3>
-                </div>
-                <span className="bg-white px-2 py-0.5 rounded-full text-xs font-medium">
-                  {videos.length}
-                </span>
+      {COLUMNS.map((column) => (
+        <div 
+          key={column.id} 
+          className={cn(
+            "flex-shrink-0 w-80 rounded-lg border-2",
+            column.color
+          )}
+        >
+          {/* Column Header */}
+          <div className="p-3 border-b border-inherit">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {column.icon}
+                <span className="font-semibold text-sm">{column.label}</span>
               </div>
+              <span className="bg-white px-2 py-0.5 rounded-full text-xs font-medium">
+                {videosByColumn[column.id]?.length || 0}
+              </span>
             </div>
+          </div>
 
-            {/* Column Content */}
-            <div className="p-2 space-y-2 min-h-[200px]">
-              {videos.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-sm">
-                  Nenhum vídeo
-                </div>
-              ) : (
-                videos.map(video => (
-                  <VideoCard
-                    key={video.id}
-                    video={video}
-                    onClick={() => onCardClick(video)}
-                    onRetry={onRetry ? () => onRetry(video.id) : undefined}
-                  />
-                ))
-              )}
-            </div>
-
-            {/* Column Footer with quick actions */}
-            {videos.length > 0 && column.id !== 'published' && column.id !== 'error' && (
-              <div className="p-2 border-t">
-                <button
-                  onClick={() => {
-                    const nextColumn = COLUMNS[COLUMNS.findIndex(c => c.id === column.id) + 1];
-                    if (nextColumn && videos[0]) {
-                      onMoveCard(videos[0].id, nextColumn.id);
-                    }
-                  }}
-                  className="w-full py-1.5 text-xs text-center text-gray-600 hover:bg-white/50 rounded transition-colors"
-                >
-                  Mover todos →
-                </button>
+          {/* Column Content */}
+          <div className="p-3 space-y-3 min-h-[200px]">
+            {videosByColumn[column.id]?.map((video) => (
+              <VideoCard
+                key={video.id}
+                video={video}
+                onMoveStatus={onMoveStatus}
+                onRetry={onRetry}
+              />
+            ))}
+            
+            {videosByColumn[column.id]?.length === 0 && (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                Nenhum vídeo
               </div>
             )}
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }

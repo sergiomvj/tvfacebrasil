@@ -1,3 +1,8 @@
+// ============================================
+// CONTROL TOWER - REACT HOOKS
+// TV Facebrasil
+// ============================================
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,31 +14,26 @@ import {
   publishVideo,
   retryVideo,
   fetchVideoLogs,
-  fetchPipelineMetrics,
   fetchDashboardStats,
-  fetchMonthlyProduction,
+  fetchPipelineMetrics,
   fetchAdvertisers,
-  createAdvertiser,
-  updateAdvertiser,
-  deleteAdvertiser,
   createVideoFromArticle,
   Video,
   VideoStatus,
   VideoLog,
   Advertiser,
-  PipelineMetrics,
   DashboardStats,
-} from './control-tower-service';
+  PipelineMetrics,
+} from '@/control-tower/services/control-tower-service';
 
 // ============================================
-// HOOK: Videos (Kanban Board)
+// HOOK: useVideos
 // ============================================
-
 export function useVideos(params?: {
   status?: VideoStatus;
   page?: number;
   limit?: number;
-}) {
+} | { limit?: number }) {
   const [videos, setVideos] = useState<Video[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -69,9 +69,8 @@ export function useVideos(params?: {
 }
 
 // ============================================
-// HOOK: Single Video
+// HOOK: useVideo
 // ============================================
-
 export function useVideo(videoId: string | null) {
   const [video, setVideo] = useState<Video | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,6 +78,7 @@ export function useVideo(videoId: string | null) {
 
   const refresh = useCallback(async () => {
     if (!videoId) {
+      setVideo(null);
       setLoading(false);
       return;
     }
@@ -107,9 +107,7 @@ export function useVideo(videoId: string | null) {
   }, userId: string) => {
     if (!videoId) return false;
     const success = await approveScript(videoId, scriptData, userId);
-    if (success) {
-      await refresh();
-    }
+    if (success) await refresh();
     return success;
   }, [videoId, refresh]);
 
@@ -121,18 +119,14 @@ export function useVideo(videoId: string | null) {
   }, userId: string) => {
     if (!videoId) return false;
     const success = await publishVideo(videoId, publishData, userId);
-    if (success) {
-      await refresh();
-    }
+    if (success) await refresh();
     return success;
   }, [videoId, refresh]);
 
   const retry = useCallback(async () => {
     if (!videoId) return false;
     const success = await retryVideo(videoId);
-    if (success) {
-      await refresh();
-    }
+    if (success) await refresh();
     return success;
   }, [videoId, refresh]);
 
@@ -140,9 +134,8 @@ export function useVideo(videoId: string | null) {
 }
 
 // ============================================
-// HOOK: Video Logs
+// HOOK: useVideoLogs
 // ============================================
-
 export function useVideoLogs(videoId: string | null) {
   const [logs, setLogs] = useState<VideoLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,6 +143,7 @@ export function useVideoLogs(videoId: string | null) {
 
   const refresh = useCallback(async () => {
     if (!videoId) {
+      setLogs([]);
       setLoading(false);
       return;
     }
@@ -173,9 +167,8 @@ export function useVideoLogs(videoId: string | null) {
 }
 
 // ============================================
-// HOOK: Dashboard Stats
+// HOOK: useDashboardStats
 // ============================================
-
 export function useDashboardStats() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -202,9 +195,8 @@ export function useDashboardStats() {
 }
 
 // ============================================
-// HOOK: Pipeline Metrics
+// HOOK: usePipelineMetrics
 // ============================================
-
 export function usePipelineMetrics() {
   const [metrics, setMetrics] = useState<PipelineMetrics[]>([]);
   const [loading, setLoading] = useState(true);
@@ -231,38 +223,8 @@ export function usePipelineMetrics() {
 }
 
 // ============================================
-// HOOK: Monthly Production
+// HOOK: useAdvertisers
 // ============================================
-
-export function useMonthlyProduction() {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchMonthlyProduction();
-      setData(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading production data');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  return { data, loading, error, refresh };
-}
-
-// ============================================
-// HOOK: Advertisers
-// ============================================
-
 export function useAdvertisers() {
   const [advertisers, setAdvertisers] = useState<Advertiser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -285,38 +247,13 @@ export function useAdvertisers() {
     refresh();
   }, [refresh]);
 
-  const create = useCallback(async (advertiser: Omit<Advertiser, 'id' | 'created_at' | 'updated_at'>) => {
-    const result = await createAdvertiser(advertiser);
-    if (result) {
-      await refresh();
-    }
-    return result;
-  }, [refresh]);
-
-  const update = useCallback(async (id: string, updates: Partial<Advertiser>) => {
-    const success = await updateAdvertiser(id, updates);
-    if (success) {
-      await refresh();
-    }
-    return success;
-  }, [refresh]);
-
-  const remove = useCallback(async (id: string) => {
-    const success = await deleteAdvertiser(id);
-    if (success) {
-      await refresh();
-    }
-    return success;
-  }, [refresh]);
-
-  return { advertisers, loading, error, refresh, create, update, remove };
+  return { advertisers, loading, error, refresh };
 }
 
 // ============================================
-// HOOK: Create Video from Article
+// HOOK: useCreateVideo
 // ============================================
-
-export function useVideoCreation() {
+export function useCreateVideo() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -335,71 +272,4 @@ export function useVideoCreation() {
   }, []);
 
   return { create, loading, error };
-}
-
-// ============================================
-// HOOK: Kanban Board (Grouped by Status)
-// ============================================
-
-export function useKanbanBoard() {
-  const [columns, setColumns] = useState<Record<VideoStatus, Video[]>>({
-    intake: [],
-    scripting: [],
-    rendering: [],
-    review: [],
-    published: [],
-    error: [],
-    cancelled: [],
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { videos } = await fetchVideos({ limit: 100 });
-      
-      const grouped: Record<VideoStatus, Video[]> = {
-        intake: [],
-        scripting: [],
-        rendering: [],
-        review: [],
-        published: [],
-        error: [],
-        cancelled: [],
-      };
-
-      videos.forEach(video => {
-        grouped[video.status].push(video);
-      });
-
-      // Sort each column by created_at desc
-      Object.keys(grouped).forEach(key => {
-        grouped[key as VideoStatus].sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-      });
-
-      setColumns(grouped);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error loading kanban');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  const moveCard = useCallback(async (videoId: string, newStatus: VideoStatus) => {
-    const success = await updateVideoStatus(videoId, newStatus);
-    if (success) {
-      await refresh();
-    }
-    return success;
-  }, [refresh]);
-
-  return { columns, loading, error, refresh, moveCard };
 }

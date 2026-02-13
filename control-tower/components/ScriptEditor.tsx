@@ -1,268 +1,256 @@
+// ============================================
+// COMPONENTE: SCRIPT EDITOR
+// Editor de Roteiro com Aprovação
+// ============================================
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
+  Loader2, 
   Save, 
-  Send, 
-  RefreshCw, 
-  ArrowLeft,
-  CheckCircle,
-  FileText,
-  Clock
+  CheckCircle, 
+  FileText, 
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Video } from '../services/control-tower-service';
+import { Video } from '@/control-tower/services/control-tower-service';
 
 interface ScriptEditorProps {
-  video: Video;
-  onSave: (script: {
-    hook: string;
-    intro: string;
-    body: string;
-    cta: string;
-    full: string;
-  }) => void;
-  onApprove: (script: {
-    hook: string;
-    intro: string;
-    body: string;
-    cta: string;
-    full: string;
-  }) => void;
-  onRegenerate: () => void;
-  onBack: () => void;
+  video: Video | null;
+  articleContent: string | null;
   loading: boolean;
+  onApprove: (scriptData: {
+    hook: string;
+    intro: string;
+    body: string;
+    cta: string;
+    full: string;
+  }) => void;
+  onRegenerate?: () => void;
 }
 
-export function ScriptEditor({
-  video,
-  onSave,
+const ScriptField = ({ 
+  label, 
+  value, 
+  onChange, 
+  placeholder,
+  rows = 4 
+}: { 
+  label: string; 
+  value: string; 
+  onChange: (value: string) => void;
+  placeholder: string;
+  rows?: number;
+}) => (
+  <div className="space-y-2">
+    <label className="text-sm font-medium text-gray-700">{label}</label>
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={rows}
+      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+    />
+  </div>
+);
+
+export function ScriptEditor({ 
+  video, 
+  articleContent, 
+  loading, 
   onApprove,
-  onRegenerate,
-  onBack,
-  loading
+  onRegenerate 
 }: ScriptEditorProps) {
-  const [script, setScript] = useState({
-    hook: video.script_hook || '',
-    intro: video.script_intro || '',
-    body: video.script_body || '',
-    cta: video.script_cta || '',
-    full: video.script_full || '',
-  });
+  const [hook, setHook] = useState('');
+  const [intro, setIntro] = useState('');
+  const [body, setBody] = useState('');
+  const [cta, setCta] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'blocks' | 'full'>('blocks');
-  const [saved, setSaved] = useState(false);
+  // Initialize from video data
+  useEffect(() => {
+    if (video) {
+      setHook(video.script_hook || '');
+      setIntro(video.script_intro || '');
+      setBody(video.script_body || '');
+      setCta(video.script_cta || '');
+      setIsDirty(false);
+    }
+  }, [video?.id]);
 
-  const handleSave = () => {
-    onSave(script);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  // Mark as dirty when any field changes
+  useEffect(() => {
+    if (video) {
+      const hasChanges = 
+        hook !== (video.script_hook || '') ||
+        intro !== (video.script_intro || '') ||
+        body !== (video.script_body || '') ||
+        cta !== (video.script_cta || '');
+      setIsDirty(hasChanges);
+    }
+  }, [hook, intro, body, cta, video]);
 
   const handleApprove = () => {
-    onApprove(script);
-  };
-
-  const handleChange = (field: keyof typeof script, value: string) => {
-    setScript(prev => {
-      const updated = { ...prev, [field]: value };
-      // Auto-update full script when blocks change
-      if (field !== 'full') {
-        updated.full = `${updated.hook}\n\n${updated.intro}\n\n${updated.body}\n\n${updated.cta}`;
-      }
-      return updated;
+    const fullScript = `${hook}\n\n${intro}\n\n${body}\n\n${cta}`;
+    onApprove({
+      hook,
+      intro,
+      body,
+      cta,
+      full: fullScript,
     });
   };
 
-  return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-white">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-lg font-semibold">Editor de Roteiro</h1>
-            <p className="text-sm text-gray-500">{video.article_title}</p>
-          </div>
-        </div>
+  // Generate mock script from article (simulação)
+  const handleGenerateFromArticle = () => {
+    if (!articleContent) return;
+    
+    // Simulação de geração de roteiro
+    const paragraphs = articleContent.split('\n').filter(p => p.trim().length > 0);
+    
+    setHook(`🎬 ${video?.article_title || 'Título do vídeo'} - Você não vai acreditar nisso!`);
+    setIntro('Olá! Bem-vindo à TV Facebrasil. Hoje vamos falar sobre um assunto muito importante para nossa comunidade.');
+    setBody(paragraphs.slice(0, 3).join('\n\n') || 'Conteúdo principal do artigo...');
+    setCta('E aí, o que achou? Deixe seu comentário e não se esqueça de se inscrever no canal!');
+    setIsDirty(true);
+  };
 
-        <div className="flex items-center gap-2">
-          {saved && (
-            <span className="text-sm text-green-600 flex items-center gap-1">
-              <CheckCircle className="w-4 h-4" />
-              Salvo
-            </span>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  if (!video) {
+    return (
+      <div className="flex items-center justify-center h-96 text-gray-500">
+        Selecione um vídeo para editar
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Left: Original Article */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Artigo Original
+          </h3>
+          <span className="text-sm text-gray-500">
+            {video.article_title}
+          </span>
+        </div>
+        
+        <div className="bg-gray-50 rounded-lg border p-4 h-[500px] overflow-y-auto">
+          {articleContent ? (
+            <div className="prose prose-sm max-w-none">
+              {articleContent.split('\n').map((paragraph, idx) => (
+                <p key={idx} className="mb-4 text-gray-700">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <div className="text-gray-400 text-center py-12">
+              Conteúdo do artigo não disponível
+            </div>
           )}
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            Salvar
-          </button>
-          <button
-            onClick={handleApprove}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-          >
-            <Send className="w-4 h-4" />
-            Aprovar Roteiro
-          </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left: Original Article */}
-        <div className="w-1/3 border-r bg-gray-50 p-4 overflow-y-auto">
-          <div className="mb-4">
-            <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Artigo Original
-            </h2>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <h3 className="font-medium mb-2">{video.article_title}</h3>
-            {video.article_excerpt && (
-              <p className="text-sm text-gray-600 mb-4">{video.article_excerpt}</p>
+      {/* Right: Script Editor */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            Roteiro do Vídeo
+          </h3>
+          <div className="flex items-center gap-2">
+            {onRegenerate && (
+              <button
+                onClick={onRegenerate}
+                className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50 flex items-center gap-1"
+              >
+                <Sparkles className="w-4 h-4" />
+                Regenerar
+              </button>
             )}
-            {video.article_content && (
-              <div 
-                className="prose prose-sm max-w-none text-gray-700"
-                dangerouslySetInnerHTML={{ __html: video.article_content }}
-              />
-            )}
+            <button
+              onClick={handleGenerateFromArticle}
+              className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex items-center gap-1"
+            >
+              <Sparkles className="w-4 h-4" />
+              Gerar do Artigo
+            </button>
           </div>
         </div>
 
-        {/* Right: Editor */}
-        <div className="flex-1 bg-white overflow-y-auto">
-          {/* Tabs */}
-          <div className="border-b">
-            <div className="flex">
-              <button
-                onClick={() => setActiveTab('blocks')}
-                className={cn(
-                  "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
-                  activeTab === 'blocks' 
-                    ? "border-blue-500 text-blue-600" 
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                )}
-              >
-                Blocos
-              </button>
-              <button
-                onClick={() => setActiveTab('full')}
-                className={cn(
-                  "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
-                  activeTab === 'full' 
-                    ? "border-blue-500 text-blue-600" 
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                )}
-              >
-                Roteiro Completo
-              </button>
-            </div>
+        <div className="space-y-4">
+          <ScriptField
+            label="Hook (Gancho inicial - 5s)"
+            value={hook}
+            onChange={setHook}
+            placeholder="Algo que prenda a atenção imediatamente..."
+            rows={2}
+          />
+
+          <ScriptField
+            label="Introdução (10-15s)"
+            value={intro}
+            onChange={setIntro}
+            placeholder="Apresente o tema e qual problema vai resolver..."
+            rows={3}
+          />
+
+          <ScriptField
+            label="Corpo (Conteúdo principal)"
+            value={body}
+            onChange={setBody}
+            placeholder="Desenvolva os pontos principais do artigo..."
+            rows={6}
+          />
+
+          <ScriptField
+            label="Call to Action (CTA - 5s)"
+            value={cta}
+            onChange={setCta}
+            placeholder="O que o espectador deve fazer agora?"
+            rows={2}
+          />
+        </div>
+
+        {/* Preview */}
+        <div className="bg-gray-50 rounded-lg border p-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Preview do Roteiro Completo</h4>
+          <div className="text-sm text-gray-600 whitespace-pre-wrap">
+            {`${hook}\n\n${intro}\n\n${body}\n\n${cta}`.trim() || 'Preencha os campos acima para ver o preview...'}
           </div>
+        </div>
 
-          {/* Editor Content */}
-          <div className="p-6">
-            {activeTab === 'blocks' ? (
-              <div className="space-y-6">
-                {/* Hook */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    🎣 Hook (Gancho Inicial)
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">
-                    Primeiros 5-10 segundos para capturar atenção
-                  </p>
-                  <textarea
-                    value={script.hook}
-                    onChange={(e) => handleChange('hook', e.target.value)}
-                    placeholder="Você sabia que..."
-                    className="w-full h-20 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  />
-                </div>
-
-                {/* Intro */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    🎬 Introdução
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">
-                    Apresentação do tema e contexto
-                  </p>
-                  <textarea
-                    value={script.intro}
-                    onChange={(e) => handleChange('intro', e.target.value)}
-                    placeholder="Neste vídeo vamos falar sobre..."
-                    className="w-full h-24 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  />
-                </div>
-
-                {/* Body */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    📝 Corpo do Vídeo
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">
-                    Conteúdo principal - desenvolvimento do tema
-                  </p>
-                  <textarea
-                    value={script.body}
-                    onChange={(e) => handleChange('body', e.target.value)}
-                    placeholder="Desenvolva aqui o conteúdo principal..."
-                    className="w-full h-48 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  />
-                </div>
-
-                {/* CTA */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    📢 Call to Action (CTA)
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">
-                    O que o espectador deve fazer depois
-                  </p>
-                  <textarea
-                    value={script.cta}
-                    onChange={(e) => handleChange('cta', e.target.value)}
-                    placeholder="Inscreva-se no canal, deixe seu like..."
-                    className="w-full h-20 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  />
-                </div>
-
-                {/* Regenerate Button */}
-                <div className="pt-4 border-t">
-                  <button
-                    onClick={onRegenerate}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Regenerar com IA
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <p className="text-sm text-gray-500 mb-4">
-                  Visualização completa do roteiro. Edite aqui para ajustes finos.
-                </p>
-                <textarea
-                  value={script.full}
-                  onChange={(e) => handleChange('full', e.target.value)}
-                  className="w-full h-[500px] p-4 border rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                />
-              </div>
-            )}
+        {/* Actions */}
+        <div className="flex items-center justify-between pt-4">
+          {isDirty && (
+            <span className="text-sm text-amber-600 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              Alterações não salvas
+            </span>
+          )}
+          
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={handleApprove}
+              disabled={!hook || !intro || !body || !cta}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Aprovar Roteiro
+            </button>
           </div>
         </div>
       </div>
