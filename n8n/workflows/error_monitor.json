@@ -1,0 +1,88 @@
+{
+    "name": "Management - Error & Performance Monitor",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "track-error",
+                "options": {}
+            },
+            "name": "Error Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ],
+            "id": "error-webhook-id"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "INSERT INTO system_logs (level, message, source, metadata) VALUES ($1, $2, $3, $4)",
+                "additionalFields": {
+                    "queryParams": "={{ [ $json.body.level || 'error', $json.body.message, $json.body.workflow_name, JSON.stringify($json.body.metadata) ] }}"
+                }
+            },
+            "name": "Log to Database",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ],
+            "id": "log-db-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "from": "MONITOR_BOT",
+                "to": "ADMIN_PHONE",
+                "message": "=🚨 Alerta de Falha na TV Facebrasil!\nWorkflow: {{ $json.body.workflow_name }}\nErro: {{ $json.body.message }}"
+            },
+            "name": "Notify Admin (Twilio)",
+            "type": "n8n-nodes-base.twilio",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ],
+            "id": "notify-admin-id",
+            "credentials": {
+                "twilioApi": {
+                    "id": "TWILIO_CREDENTIAL_ID",
+                    "name": "Twilio Account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Error Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Log to Database",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Log to Database": {
+            "main": [
+                [
+                    {
+                        "node": "Notify Admin (Twilio)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

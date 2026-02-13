@@ -1,0 +1,189 @@
+{
+    "name": "Intake - Editor Chefe Engine",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "facebrasil-intake",
+                "options": {}
+            },
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ],
+            "id": "webhook-trigger-id"
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "articles",
+                "options": {}
+            },
+            "name": "Split into Articles",
+            "type": "n8n-nodes-base.itemLists",
+            "typeVersion": 1,
+            "position": [
+                300,
+                300
+            ],
+            "id": "split-articles-id"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "SELECT external_id FROM articles WHERE external_id = $1",
+                "additionalFields": {
+                    "queryParams": "={{ $json.id }}"
+                }
+            },
+            "name": "Check Deduplication",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ],
+            "id": "dedup-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $node[\"Check Deduplication\"].json[\"external_id\"] }}",
+                            "operator": "isEmpty"
+                        }
+                    ]
+                }
+            },
+            "name": "Filter New Posts",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                700,
+                300
+            ],
+            "id": "if-new-id"
+        },
+        {
+            "parameters": {
+                "model": "gpt-4o",
+                "prompt": "=Você é o Editor Chefe da TV Facebrasil. Sua missão é analisar as 5 matérias enviadas e decidir o melhor formato para cada uma.\n\nCritérios:\n- **Short (1-3 min)**: Matérias rápidas, notícias de última hora, dicas simples, curiosidades ou fatos impactantes.\n- **Doc (10 min)**: Matérias profundas, histórias de vida, guias detalhados de imigração, análises políticas ou econômicas complexas.\n\nMatéria Atual:\nTítulo: {{ $node[\"Split into Articles\"].json.titulo }}\nConteúdo: {{ $node[\"Split into Articles\"].json.conteudo }}\n\nResponda em JSON:\n{\n  \"formato\": \"short\" | \"doc\",\n  \"score\": 0-10,\n  \"justificativa\": \"...\"\n}",
+                "options": {}
+            },
+            "name": "Editor Chefe AI",
+            "type": "n8n-nodes-base.openAi",
+            "typeVersion": 1,
+            "position": [
+                900,
+                250
+            ],
+            "id": "ai-score-id",
+            "credentials": {
+                "openAiApi": {
+                    "id": "OPENAI_CREDENTIAL_ID",
+                    "name": "OpenAI Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "insert",
+                "schema": "public",
+                "table": "articles",
+                "columns": "external_id, title, url, content, score, analysis_result, recommended_format",
+                "options": {
+                    "mappingMode": "defineBelow",
+                    "valueMapping": {
+                        "external_id": "={{ $node[\"Split into Articles\"].json.id }}",
+                        "title": "={{ $node[\"Split into Articles\"].json.titulo }}",
+                        "content": "={{ $node[\"Split into Articles\"].json.conteudo }}",
+                        "url": "={{ $node[\"Split into Articles\"].json.link }}",
+                        "score": "={{ $json.score }}",
+                        "recommended_format": "={{ $json.formato }}",
+                        "analysis_result": "={{ $json.justificativa }}"
+                    }
+                }
+            },
+            "name": "Save to DB",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                1100,
+                250
+            ],
+            "id": "save-db-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Split into Articles",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split into Articles": {
+            "main": [
+                [
+                    {
+                        "node": "Check Deduplication",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Deduplication": {
+            "main": [
+                [
+                    {
+                        "node": "Filter New Posts",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter New Posts": {
+            "main": [
+                [
+                    {
+                        "node": "Editor Chefe AI",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Editor Chefe AI": {
+            "main": [
+                [
+                    {
+                        "node": "Save to DB",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

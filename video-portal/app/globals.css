@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@theme {
+  /* Design Standards Compliance */
+
+  /* Fonts */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+
+  /* Colors - Dark Mode per Standards */
+  /* Background: #101622 (Brand Dark Blue) */
+  --color-background: #101622;
+  --color-foreground: #FFFFFF;
+
+  /* Cards: #1E293B (Slate 800) */
+  --color-card: #1E293B;
+  --color-card-foreground: #FFFFFF;
+
+  /* Popovers */
+  --color-popover: #101622;
+  --color-popover-foreground: #FFFFFF;
+
+  /* Primary: #F97316 (Orange 500) */
+  --color-primary: #F97316;
+  --color-primary-foreground: #FFFFFF;
+
+  /* Secondary: #1E293B (Slate 800) */
+  --color-secondary: #1E293B;
+  --color-secondary-foreground: #FFFFFF;
+
+  /* Muted: #334155 (Slate 700) */
+  --color-muted: #334155;
+  --color-muted-foreground: #94A3B8;
+  /* Slate 400 */
+
+  /* Accent: #FCD34D (Amber 300) or lighter Orange */
+  --color-accent: #EA580C;
+  /* Orange 600 */
+  --color-accent-foreground: #FFFFFF;
+
+  /* Destructive */
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
+
+  /* Borders: #334155 (Slate 700) */
+  --color-border: #334155;
+  --color-input: #334155;
+  --color-ring: #F97316;
+
+  --radius: 0.5rem;
+  /* 8px Standard */
+}
+
+:root {
+  /* Fallback CSS Variables if needed by components */
+  --background: #101622;
+  --foreground: #FFFFFF;
+  --card: #1E293B;
+  --card-foreground: #FFFFFF;
+  --popover: #101622;
+  --popover-foreground: #FFFFFF;
+  --primary: #F97316;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1E293B;
+  --secondary-foreground: #FFFFFF;
+  --muted: #334155;
+  --muted-foreground: #94A3B8;
+  --accent: #EA580C;
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #334155;
+  --input: #334155;
+  --ring: #F97316;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    @apply antialiased;
+  }
+
+  /* Apply Heading Font to Headings */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer utilities {
+  .news-card {
+    @apply transition-colors duration-200 bg-card rounded-lg overflow-hidden border border-border hover:border-primary/50;
+  }
+
+  .news-title {
+    @apply font-heading font-bold tracking-tight text-white transition-colors group-hover:text-primary;
+  }
+
+  .live-pulse {
+    @apply relative flex h-3 w-3;
+  }
+
+  .live-pulse span:first-child {
+    @apply animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75;
+  }
+
+  .live-pulse span:last-child {
+    @apply relative inline-flex rounded-full h-3 w-3 bg-red-500;
+  }
+}

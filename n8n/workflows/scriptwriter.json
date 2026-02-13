@@ -1,0 +1,122 @@
+{
+    "name": "Scriptwriter Agent",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "generate-script",
+                "options": {}
+            },
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ],
+            "id": "a1b2c3d4-e5f6-4a5b-b6c7-d8e9f0a1b2c3"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "SELECT * FROM articles WHERE id = $1",
+                "additionalFields": {
+                    "queryParams": "={{ $json.body.article_id }}"
+                }
+            },
+            "name": "Fetch Article",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ],
+            "id": "b2c3d4e5-f6a7-5b6c-c7d8-e9f0a1b2c3d4",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "chat",
+                "prompt": "You are a TV Scriptwriter. Convert this article into a 2-minute video script with these blocks: Hook, Intro, Point 1, Point 2, Point 3, Conclusion, CTA. Use visual cues like [CAMERA] and [B-ROLL].\n\nArticle: {{ $json.content }}",
+                "options": {}
+            },
+            "name": "Script Generator AI",
+            "type": "n8n-nodes-base.openAi",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ],
+            "id": "c3d4e5f6-a7b8-6c7d-d8e9-f0a1b2c3d4e5",
+            "credentials": {
+                "openAiApi": {
+                    "id": "OPENAI_CREDENTIAL_ID",
+                    "name": "OpenAI Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "insert",
+                "schema": "public",
+                "table": "videos",
+                "columns": "article_id, title, status, script_content",
+                "options": {}
+            },
+            "name": "Save Video Draft",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                850,
+                300
+            ],
+            "id": "d4e5f6a7-b8c9-7d8e-e9f0-a1b2c3d4e5f6",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Article",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Article": {
+            "main": [
+                [
+                    {
+                        "node": "Script Generator AI",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Script Generator AI": {
+            "main": [
+                [
+                    {
+                        "node": "Save Video Draft",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

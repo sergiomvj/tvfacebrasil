@@ -1,0 +1,26 @@
+# Dockerignore for Next.js
+.next
+node_modules
+npm-debug.log
+.env*.local
+.env
+.git
+.gitignore
+README.md
+.vscode
+.idea
+*.md
+!README.md
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+__tests__
+coverage
+
+# Development
+.clerk
+.DS_Store
+*.log

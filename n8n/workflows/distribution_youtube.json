@@ -1,0 +1,128 @@
+{
+    "name": "Distribution - YouTube Publisher",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "publish-youtube",
+                "options": {}
+            },
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ],
+            "id": "yt-trigger-id"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "SELECT * FROM videos WHERE id = $1",
+                "additionalFields": {
+                    "queryParams": "={{ $json.body.video_id }}"
+                }
+            },
+            "name": "Fetch Video Data",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ],
+            "id": "fetch-video-yt-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "video",
+                "title": "={{ $json.title }}",
+                "description": "={{ $json.description }}",
+                "videoUrl": "={{ $json.video_url }}",
+                "privacyStatus": "private",
+                "options": {
+                    "tags": "={{ $json.tags.join(',') }}"
+                }
+            },
+            "name": "YouTube Upload",
+            "type": "n8n-nodes-base.youtube",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ],
+            "id": "youtube-upload-id",
+            "credentials": {
+                "googleApi": {
+                    "id": "GOOGLE_CREDENTIAL_ID",
+                    "name": "YouTube Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "schema": "public",
+                "table": "videos",
+                "updateKey": "id",
+                "columns": "status",
+                "options": {}
+            },
+            "name": "Update Status Published",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                850,
+                300
+            ],
+            "id": "update-status-yt-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Video Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Video Data": {
+            "main": [
+                [
+                    {
+                        "node": "YouTube Upload",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "YouTube Upload": {
+            "main": [
+                [
+                    {
+                        "node": "Update Status Published",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

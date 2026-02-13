@@ -1,0 +1,89 @@
+{
+    "name": "Processing - Script Reviewer Agent",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "review-script",
+                "options": {}
+            },
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ],
+            "id": "review-trigger-id"
+        },
+        {
+            "parameters": {
+                "model": "gpt-4o",
+                "prompt": "=Você é o Editor-Chefe da TV Facebrasil. Seu objetivo é revisar o roteiro abaixo para garantir que ele seja envolvente, preciso e siga a voz da marca.\n\nROTEIRO:\n{{ $json.body.script_content }}\n\nCritérios de Revisão:\n1. O 'Hook' (gancho) é forte o suficiente nos primeiros 5 segundos?\n2. A linguagem é acessível para a comunidade brasileira nos EUA?\n3. Existem chamadas para ação (CTA) claras?\n4. O ritmo está adequado?\n\nResponda APENAS com o roteiro revisado final ou uma lista de melhorias se houver erros críticos.",
+                "options": {}
+            },
+            "name": "AI Reviewer Agent",
+            "type": "n8n-nodes-base.openAi",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ],
+            "id": "ai-reviewer-id",
+            "credentials": {
+                "openAiApi": {
+                    "id": "OPENAI_CREDENTIAL_ID",
+                    "name": "OpenAI API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "schema": "public",
+                "table": "videos",
+                "updateKey": "id",
+                "columns": "script_content, status",
+                "options": {}
+            },
+            "name": "Update Reviewed Script",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ],
+            "id": "update-script-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "AI Reviewer Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Reviewer Agent": {
+            "main": [
+                [
+                    {
+                        "node": "Update Reviewed Script",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

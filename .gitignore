@@ -1,0 +1,15 @@
+# Environment
+.env
+.env.local
+.env.*.local
+control-tower/.env
+video-portal/.env
+node_modules/
+.next/
+build/
+dist/
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+*.log

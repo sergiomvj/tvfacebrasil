@@ -1,0 +1,119 @@
+{
+    "name": "Engagement - Multi-Channel Notifications",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "notify-video-published",
+                "options": {}
+            },
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                200,
+                300
+            ],
+            "id": "notify-trigger-id"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "SELECT * FROM videos WHERE id = $1",
+                "additionalFields": {
+                    "queryParams": "={{ $json.body.video_id }}"
+                }
+            },
+            "name": "Fetch Video Details",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                400,
+                300
+            ],
+            "id": "fetch-details-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "SELECT phone, name FROM subscribers WHERE active = true"
+            },
+            "name": "Fetch Active Subscribers",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                600,
+                300
+            ],
+            "id": "fetch-subscribers-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "from": "TWILIO_WHATSAPP_NUMBER",
+                "to": "={{ $json.phone }}",
+                "message": "=Olá {{ $json.name }}! Acabamos de postar um novo vídeo na TV Facebrasil: \"{{ $node[\"Fetch Video Details\"].json[\"title\"] }}\". Assista agora: https://facebrasil.tv/video/{{ $node[\"Fetch Video Details\"].json[\"id\"] }}"
+            },
+            "name": "Twilio WhatsApp",
+            "type": "n8n-nodes-base.twilio",
+            "typeVersion": 1,
+            "position": [
+                850,
+                300
+            ],
+            "id": "twilio-id",
+            "credentials": {
+                "twilioApi": {
+                    "id": "TWILIO_CREDENTIAL_ID",
+                    "name": "Twilio Account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Video Details",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Video Details": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Active Subscribers",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Active Subscribers": {
+            "main": [
+                [
+                    {
+                        "node": "Twilio WhatsApp",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

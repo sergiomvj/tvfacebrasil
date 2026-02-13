@@ -1,0 +1,165 @@
+{
+    "name": "Distribution - Social Media (Shorts/Reels/TikTok)",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "publish-social",
+                "options": {}
+            },
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ],
+            "id": "social-trigger-id"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "SELECT * FROM videos WHERE id = $1",
+                "additionalFields": {
+                    "queryParams": "={{ $json.body.video_id }}"
+                }
+            },
+            "name": "Fetch Video Data",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ],
+            "id": "fetch-video-social-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "options": {
+                    "caption": "={{ $json.title }} #Facebrasil #ComunidadeBrasileira #NoticiasEUA"
+                }
+            },
+            "name": "Instagram Publish",
+            "type": "n8n-nodes-base.instagram",
+            "typeVersion": 1,
+            "position": [
+                700,
+                200
+            ],
+            "id": "ig-publish-id",
+            "credentials": {
+                "instagramApi": {
+                    "id": "IG_CREDENTIAL_ID",
+                    "name": "Instagram Business Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "video",
+                "title": "={{ $json.title }}",
+                "description": "={{ $json.description }}",
+                "videoUrl": "={{ $json.video_url }}",
+                "privacyStatus": "public",
+                "options": {
+                    "tags": "Shorts,Facebrasil,News"
+                }
+            },
+            "name": "YouTube Shorts",
+            "type": "n8n-nodes-base.youtube",
+            "typeVersion": 1,
+            "position": [
+                700,
+                400
+            ],
+            "id": "yt-shorts-id",
+            "credentials": {
+                "googleApi": {
+                    "id": "GOOGLE_CREDENTIAL_ID",
+                    "name": "YouTube Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "schema": "public",
+                "table": "videos",
+                "updateKey": "id",
+                "columns": "status",
+                "options": {}
+            },
+            "name": "Status: Shared",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                950,
+                300
+            ],
+            "id": "update-status-social-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Video Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Video Data": {
+            "main": [
+                [
+                    {
+                        "node": "Instagram Publish",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "YouTube Shorts",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Instagram Publish": {
+            "main": [
+                [
+                    {
+                        "node": "Status: Shared",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "YouTube Shorts": {
+            "main": [
+                [
+                    {
+                        "node": "Status: Shared",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

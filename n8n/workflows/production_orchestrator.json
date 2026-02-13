@@ -1,0 +1,368 @@
+{
+    "name": "Production - Full Engine (Multi-Source)",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "start-production",
+                "options": {}
+            },
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                -100,
+                300
+            ],
+            "id": "prod-trigger-id"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "SELECT * FROM videos WHERE id = $1",
+                "additionalFields": {
+                    "queryParams": "={{ $json.body.video_id }}"
+                }
+            },
+            "name": "Fetch Video Data",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ],
+            "id": "fetch-video-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "=https://api.unsplash.com/search/photos?query={{ $node[\"Fetch Video Data\"].json.title }}&per_page=1",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "=Client-ID {{ $env.UNSPLASH_ACCESS_KEY }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Search Unsplash (Photo Default)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                300,
+                100
+            ],
+            "id": "unsplash-id"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.total == 0 }}",
+                            "operator": "isTrue"
+                        }
+                    ]
+                }
+            },
+            "name": "Unsplash Empty?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                500,
+                100
+            ],
+            "id": "if-unsplash-id"
+        },
+        {
+            "parameters": {
+                "url": "=https://pixabay.com/api/?key={{ $env.PIXABAY_ACCESS_KEY }}&q={{ encodeURIComponent($node[\"Fetch Video Data\"].json.title) }}&image_type=photo&per_page=3",
+                "options": {}
+            },
+            "name": "Search Pixabay (Photo Fallback)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                700,
+                200
+            ],
+            "id": "pixabay-photo-id"
+        },
+        {
+            "parameters": {
+                "url": "=https://pixabay.com/api/videos/?key={{ $env.PIXABAY_ACCESS_KEY }}&q={{ encodeURIComponent($node[\"Fetch Video Data\"].json.title) }}&per_page=3",
+                "options": {}
+            },
+            "name": "Search Pixabay (Video Default)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                300,
+                500
+            ],
+            "id": "pixabay-video-id"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.total == 0 }}",
+                            "operator": "isTrue"
+                        }
+                    ]
+                }
+            },
+            "name": "Pixabay Video Empty?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                500,
+                500
+            ],
+            "id": "if-pixabay-vid-id"
+        },
+        {
+            "parameters": {
+                "url": "=https://api.pexels.com/videos/search?query={{ encodeURIComponent($node[\"Fetch Video Data\"].json.title) }}&per_page=1",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "={{ $env.PEXELS_API_KEY }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Search Pexels (Video Fallback)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                700,
+                600
+            ],
+            "id": "pexels-video-id"
+        },
+        {
+            "parameters": {
+                "text": "={{ $node[\"Fetch Video Data\"].json.script_content.blocks.map(b => b.content).join(' ') }}",
+                "modelId": "eleven_multilingual_v2",
+                "voiceId": "VOICE_ID_HERE",
+                "outputFormat": "mp3_44100_128",
+                "options": {}
+            },
+            "name": "ElevenLabs TTS",
+            "type": "n8n-nodes-base.elevenLabs",
+            "typeVersion": 1,
+            "position": [
+                1000,
+                350
+            ],
+            "id": "elevenlabs-id"
+        },
+        {
+            "parameters": {
+                "url": "https://api.heygen.com/v2/video/generate",
+                "method": "POST",
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-Api-Key",
+                            "value": "={{ $env.HEYGEN_KEY }}"
+                        }
+                    ]
+                },
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "video_inputs",
+                            "value": "={{ [ { character: { type: 'avatar', avatar_id: 'AVATAR_ID_HERE' }, voice: { type: 'audio', audio_url: $node[\"ElevenLabs TTS\"].json.audio_url } } ] }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "HeyGen Avatar",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                1200,
+                350
+            ],
+            "id": "heygen-id"
+        },
+        {
+            "parameters": {
+                "operation": "insert",
+                "schema": "public",
+                "table": "api_usage_logs",
+                "columns": "service, feature, estimated_cost, response_metadata",
+                "options": {
+                    "valueMapping": {
+                        "service": "heygen",
+                        "feature": "video-generation",
+                        "estimated_cost": 0.5,
+                        "response_metadata": "={{ $json }}"
+                    }
+                }
+            },
+            "name": "Log HeyGen Cost",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 1,
+            "position": [
+                1400,
+                350
+            ],
+            "id": "log-cost-id",
+            "credentials": {
+                "postgres": {
+                    "id": "POSTGRES_CREDENTIAL_ID",
+                    "name": "Supabase DB"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Video Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Video Data": {
+            "main": [
+                [
+                    {
+                        "node": "Search Unsplash (Photo Default)",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Search Pixabay (Video Default)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Search Unsplash (Photo Default)": {
+            "main": [
+                [
+                    {
+                        "node": "Unsplash Empty?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Unsplash Empty?": {
+            "main": [
+                [
+                    {
+                        "node": "ElevenLabs TTS",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Search Pixabay (Photo Fallback)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Search Pixabay (Photo Fallback)": {
+            "main": [
+                [
+                    {
+                        "node": "ElevenLabs TTS",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Search Pixabay (Video Default)": {
+            "main": [
+                [
+                    {
+                        "node": "Pixabay Video Empty?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Pixabay Video Empty?": {
+            "main": [
+                [
+                    {
+                        "node": "ElevenLabs TTS",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Search Pexels (Video Fallback)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Search Pexels (Video Fallback)": {
+            "main": [
+                [
+                    {
+                        "node": "ElevenLabs TTS",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "ElevenLabs TTS": {
+            "main": [
+                [
+                    {
+                        "node": "HeyGen Avatar",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HeyGen Avatar": {
+            "main": [
+                [
+                    {
+                        "node": "Log HeyGen Cost",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
