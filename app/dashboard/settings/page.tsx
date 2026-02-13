@@ -1,5 +1,5 @@
 // ============================================
-// PÁGINA: SETTINGS - Integrações
+// PÁGINA: SETTINGS - Integrações (ATUALIZADA)
 // /dashboard/settings
 // ============================================
 
@@ -14,22 +14,24 @@ import {
   XCircle, 
   RefreshCw,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Clock
 } from 'lucide-react';
 import Link from 'next/link';
 
 interface IntegrationStatus {
   provider: string;
   connected: boolean;
+  partial?: boolean;
   lastSync?: string;
   error?: string;
+  details?: any;
 }
 
 export default function SettingsPage() {
   const [youtubeStatus, setYoutubeStatus] = useState<IntegrationStatus | null>(null);
   const [metaStatus, setMetaStatus] = useState<IntegrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [testResult, setTestResult] = useState<any>(null);
 
   useEffect(() => {
     checkIntegrations();
@@ -45,15 +47,20 @@ export default function SettingsPage() {
       setYoutubeStatus({
         provider: 'YouTube',
         connected: youtubeData.success,
+        details: youtubeData,
         error: youtubeData.error
       });
-      setTestResult(youtubeData);
 
-      // TODO: Check Meta when implemented
+      // Check Meta
+      const metaRes = await fetch('/api/test/meta-connection');
+      const metaData = await metaRes.json();
+      
       setMetaStatus({
         provider: 'Meta (Instagram/Facebook)',
-        connected: false,
-        error: 'Not configured'
+        connected: metaData.success,
+        partial: metaData.status === 'partial',
+        details: metaData,
+        error: metaData.error
       });
 
     } catch (error) {
@@ -83,7 +90,7 @@ export default function SettingsPage() {
       color: 'text-pink-500',
       bgColor: 'bg-pink-50',
       status: metaStatus,
-      connectUrl: '#', // TODO: Implement Meta OAuth
+      guideUrl: '/docs/META_ACCESS_TOKEN_GUIDE.md',
       docsUrl: 'https://developers.facebook.com/docs/instagram-api'
     },
     {
@@ -94,10 +101,42 @@ export default function SettingsPage() {
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       status: metaStatus,
-      connectUrl: '#', // TODO: Implement Meta OAuth
+      guideUrl: '/docs/META_ACCESS_TOKEN_GUIDE.md',
       docsUrl: 'https://developers.facebook.com/docs/graph-api'
     }
   ];
+
+  const renderStatus = (integration: typeof integrations[0]) => {
+    const status = integration.status;
+    
+    if (!status) return (
+      <div className="flex items-center gap-1">
+        <Clock className="w-5 h-5 text-gray-400" />
+        <span className="text-sm text-gray-500">Verificando...</span>
+      </div>
+    );
+
+    if (status.connected) return (
+      <div className="flex items-center gap-1">
+        <CheckCircle className="w-5 h-5 text-green-500" />
+        <span className="text-sm text-green-600">Conectado</span>
+      </div>
+    );
+
+    if (status.partial) return (
+      <div className="flex items-center gap-1">
+        <AlertCircle className="w-5 h-5 text-yellow-500" />
+        <span className="text-sm text-yellow-600">Parcial</span>
+      </div>
+    );
+
+    return (
+      <div className="flex items-center gap-1">
+        <XCircle className="w-5 h-5 text-gray-400" />
+        <span className="text-sm text-gray-500">Não conectado</span>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -123,48 +162,66 @@ export default function SettingsPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* YouTube Test Result */}
-        {testResult && (
-          <div className={`mb-8 p-4 rounded-lg ${testResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              {testResult.success ? (
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-red-600" />
+        {/* Status Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          {/* YouTube Status */}
+          {youtubeStatus && (
+            <div className={`p-4 rounded-lg border ${youtubeStatus.connected ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Youtube className={`w-5 h-5 ${youtubeStatus.connected ? 'text-green-600' : 'text-yellow-600'}`} />
+                <span className={`font-medium ${youtubeStatus.connected ? 'text-green-800' : 'text-yellow-800'}`}>
+                  YouTube {youtubeStatus.connected ? '✅ Configurado' : '⚠️ Pendente'}
+                </span>
+              </div>
+              {youtubeStatus.connected && youtubeStatus.details?.auth_url && (
+                <a 
+                  href={youtubeStatus.details.auth_url}
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  Conectar conta do YouTube →
+                </a>
               )}
-              <span className={`font-medium ${testResult.success ? 'text-green-800' : 'text-red-800'}`}>
-                {testResult.success ? 'YouTube Data API v3 configurada!' : 'Erro na configuração'}
-              </span>
             </div>
-            
-            {testResult.success && (
-              <div className="text-sm text-green-700 space-y-1">
-                <p>✅ Client ID configurado</p>
-                <p>✅ Client Secret configurado</p>
-                <p>✅ Redirect URI: {testResult.redirect_uri}</p>
-                
-                <div className="mt-4">
-                  <p className="font-medium">Próximos passos:</p>
-                  <ol className="list-decimal list-inside mt-2 space-y-1">
-                    {testResult.next_steps.map((step: string, i: number) => (
-                      <li key={i}>{step}</li>
-                    ))}
-                  </ol>
-                </div>
+          )}
 
-                <div className="mt-4">
+          {/* Meta Status */}
+          {metaStatus && (
+            <div className={`p-4 rounded-lg border ${
+              metaStatus.connected ? 'bg-green-50 border-green-200' : 
+              metaStatus.partial ? 'bg-blue-50 border-blue-200' : 
+              'bg-yellow-50 border-yellow-200'
+            }`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Instagram className={`w-5 h-5 ${
+                  metaStatus.connected ? 'text-green-600' : 
+                  metaStatus.partial ? 'text-blue-600' : 
+                  'text-yellow-600'
+                }`} />
+                <span className={`font-medium ${
+                  metaStatus.connected ? 'text-green-800' : 
+                  metaStatus.partial ? 'text-blue-800' : 
+                  'text-yellow-800'
+                }`}>
+                  Meta (Instagram) {' '}
+                  {metaStatus.connected ? '✅ Conectado' : 
+                   metaStatus.partial ? '🔧 App OK (falta token)' : 
+                   '⚠️ Pendente'}
+                </span>
+              </div>
+              {metaStatus.partial && (
+                <div className="text-sm text-blue-700">
+                  <p className="mb-1">✅ App ID: {metaStatus.details?.app_id}</p>
                   <a 
-                    href={testResult.auth_url}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    href="/docs/META_ACCESS_TOKEN_GUIDE.md"
+                    className="text-blue-600 hover:underline font-medium"
                   >
-                    <Youtube className="w-4 h-4" />
-                    Conectar Conta do YouTube
+                    Gerar Access Token →
                   </a>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Integrations Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -175,31 +232,22 @@ export default function SettingsPage() {
                   <integration.icon className={`w-6 h-6 ${integration.color}`} />
                 </div>
                 
-                {integration.status && (
-                  <div className="flex items-center gap-1">
-                    {integration.status.connected ? (
-                      <>
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                        <span className="text-sm text-green-600">Conectado</span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-5 h-5 text-gray-400" />
-                        <span className="text-sm text-gray-500">Não conectado</span>
-                      </>
-                    )}
-                  </div>
-                )}
+                {renderStatus(integration)}
               </div>
 
               <h3 className="font-semibold text-gray-900 mb-1">{integration.name}</h3>
               <p className="text-sm text-gray-500 mb-4">{integration.description}</p>
 
               <div className="space-y-2">
-                {integration.status?.error && (
-                  <p className="text-xs text-red-600 bg-red-50 p-2 rounded">
-                    {integration.status.error}
-                  </p>
+                {integration.status?.details?.next_steps && (
+                  <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                    <p className="font-medium mb-1">Próximos passos:</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      {integration.status.details.next_steps.slice(0, 3).map((step: string, i: number) => (
+                        <li key={i}>{step}</li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
 
                 <div className="flex gap-2">
@@ -207,17 +255,20 @@ export default function SettingsPage() {
                     <button className="flex-1 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 text-sm">
                       Desconectar
                     </button>
-                  ) : (
+                  ) : integration.id === 'youtube' ? (
                     <Link
                       href={integration.connectUrl}
-                      className={`flex-1 px-4 py-2 rounded-lg text-white text-sm text-center ${
-                        integration.id === 'youtube' 
-                          ? 'bg-red-600 hover:bg-red-700' 
-                          : 'bg-gray-400 cursor-not-allowed'
-                      }`}
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm text-center"
                     >
-                      {integration.id === 'youtube' ? 'Conectar' : 'Em breve'}
+                      Conectar
                     </Link>
+                  ) : (
+                    <a
+                      href={integration.guideUrl}
+                      className="flex-1 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 text-sm text-center"
+                    >
+                      Como Configurar
+                    </a>
                   )}
                   
                   <a
@@ -236,16 +287,27 @@ export default function SettingsPage() {
 
         {/* Help Section */}
         <div className="mt-12 bg-blue-50 rounded-lg border border-blue-200 p-6">
-          <h3 className="font-semibold text-blue-900 mb-2">Precisa de ajuda?</h3>
-          <p className="text-blue-700 mb-4">
-            Consulte o guia completo de configuração das APIs em:
-          </p>
-          <a 
-            href="/docs/GUIA_APIS_YOUTUBE_META.md"
-            className="inline-flex items-center gap-2 text-blue-600 hover:underline"
-          >
-            📄 docs/GUIA_APIS_YOUTUBE_META.md
-          </a>
+          <h3 className="font-semibold text-blue-900 mb-2">📚 Guias de Configuração</h3>
+          <div className="space-y-2">
+            <a 
+              href="/docs/GUIA_APIS_YOUTUBE_META.md"
+              className="block text-blue-600 hover:underline"
+            >
+              → Guia completo YouTube + Meta APIs
+            </a>
+            <a 
+              href="/docs/META_ACCESS_TOKEN_GUIDE.md"
+              className="block text-blue-600 hover:underline"
+            >
+              → Como gerar Access Token do Instagram
+            </a>
+            <a 
+              href="/docs/APIs_NECESSARIAS.md"
+              className="block text-blue-600 hover:underline"
+            >
+              → Lista completa de APIs necessárias
+            </a>
+          </div>
         </div>
       </div>
     </div>
