@@ -4,6 +4,12 @@
 .env.*.local
 control-tower/.env
 video-portal/.env
+
+# Credentials (NEVER commit!)
+*.credentials.json
+.google-credentials-temp.md
+client_secret*.json
+
 node_modules/
 .next/
 build/

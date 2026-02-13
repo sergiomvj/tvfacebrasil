@@ -319,17 +319,50 @@ export async function publishVideo(
   userId: string
 ): Promise<boolean> {
   try {
+    // Primeiro atualiza os dados no banco
     const { error } = await supabaseAdmin
       .from('videos')
       .update({
         ...publishData,
-        status: 'published',
-        published_at: new Date().toISOString(),
         published_by: userId,
       })
       .eq('id', videoId);
 
     if (error) throw error;
+
+    // Se não tiver youtube_video_id, faz upload para o YouTube
+    if (!publishData.youtube_video_id) {
+      try {
+        const response = await fetch(`/api/videos/${videoId}/upload-to-youtube`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('YouTube upload error:', errorData);
+          // Não falha o publish se o YouTube der erro, só loga
+        } else {
+          const result = await response.json();
+          console.log('YouTube upload success:', result);
+        }
+      } catch (youtubeError) {
+        console.error('Error calling YouTube upload:', youtubeError);
+        // Não falha o publish se o YouTube der erro
+      }
+    } else {
+      // Se já tem youtube_video_id, apenas atualiza status
+      const { error: statusError } = await supabaseAdmin
+        .from('videos')
+        .update({
+          status: 'published',
+          published_at: new Date().toISOString(),
+        })
+        .eq('id', videoId);
+
+      if (statusError) throw statusError;
+    }
+
     return true;
   } catch (error) {
     console.error('Error publishing video:', error);
